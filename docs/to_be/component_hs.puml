@@ -1,0 +1,86 @@
+@startuml
+!include ../C4/C4_Component.puml
+
+' Делаем связи по умолчанию чёрными
+UpdateRelStyle(black, black)
+
+' Объявляем теги, используемые для цветных линий
+AddRelTag("blueLine",   $lineColor="#0000FF", $textColor="#0000FF")
+AddRelTag("redLine",    $lineColor="#FF0000", $textColor="#FF0000")
+AddRelTag("tealLine",   $lineColor="#008080", $textColor="#008080")
+AddRelTag("greenLine",  $lineColor="#00FF00", $textColor="#00FF00")
+AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
+AddElementTag("сlickable", $bgColor="#E6FFE6", $fontColor="#006600", $borderColor="#00CC00")
+
+title C4 Component Diagram – Home Management Service
+
+' -- Внешние системы / объекты, которые находятся за пределами микросервиса --
+System_Ext(apiGateway, "API Gateway", "Обрабатывает внешние запросы (REST/HTTP)", "Маршрутизация и авторизация")
+System_Ext(partnerDevices, "Устройства партнёров", "Датчики/реле ворот/лампы/термостаты", "MQTT/HTTP и т.д.")
+System_Ext(kafka, "Kafka Cluster", "Event Streaming Platform", "Асинхронная передача сообщений")
+ContainerDb(homeDb, "HomeDB", "PostgreSQL", "Хранение настроек и статусов отопления, освещения, ворот и т.д.")
+
+'
+' --- Граница микросервиса Home Management Service ---
+'
+Container_Boundary(homeService, "Home Management Service", "Java/Spring Boot") {
+    Component(homeController, "HomeController", "Spring REST Controller", "Обрабатывает входящие HTTP-запросы от API Gateway (например, /heating, /lights)")
+    Component(heatingCore, "HeatingCore", "Service / Bean", "Бизнес-логика управления отоплением: включение/выключение, установка температуры", $link="code.puml", $tags="сlickable")
+    Component(lightingCore, "LightingCore", "Service / Bean", "Бизнес-логика управления освещением: включение/выключение, яркость, расписания")
+    Component(gateCore, "GateCore", "Service / Bean", "Бизнес-логика автоматических ворот: открытие/закрытие, статус")
+    Component(eventListener, "HomeEventListener", "Kafka Consumer", "Подписывается на события (например, сценарии) из Kafka")
+    Component(eventPublisher, "HomeEventPublisher", "Kafka Producer", "Публикует события/статусы (HeatingChanged, LightOn, GateOpened и т.д.) в Kafka")
+    Component(homeRepository, "HomeRepository", "JPA / DAO", "Обеспечивает доступ к базе данных HomeDB")
+}
+
+'
+' --- Связи между внутренними компонентами (внутри Boundary) ---
+'
+Rel(homeController, heatingCore,   "setTemperature(), turnOnHeating()", $tags="blueLine")
+Rel(homeController, lightingCore,  "switchOnLights(), setBrightness()", $tags="blueLine")
+Rel(homeController, gateCore,      "openGate(), closeGate()",           $tags="blueLine")
+
+Rel(heatingCore,   homeRepository, "CRUD: HeatingConfig / Logs", $tags="tealLine")
+Rel(lightingCore,  homeRepository, "CRUD: LightingConfig / Logs", $tags="tealLine")
+Rel(gateCore,      homeRepository, "CRUD: GateConfig / Status",  $tags="tealLine")
+
+Rel(eventListener, heatingCore,  "Получает команды для отопления",    $tags="greenLine")
+Rel(eventListener, lightingCore, "Получает команды для освещения",   $tags="greenLine")
+Rel(eventListener, gateCore,     "Получает команды для ворот",       $tags="greenLine")
+
+Rel(heatingCore,   eventPublisher, "Публикует HeatingStatusChanged",  $tags="greenLine")
+Rel(lightingCore,  eventPublisher, "Публикует LightingChanged",       $tags="greenLine")
+Rel(gateCore,      eventPublisher, "Публикует GateOpened/GateClosed", $tags="greenLine")
+
+'
+' --- Взаимодействие компонентов с внешними системами (за пределами Boundary) ---
+'
+Rel(apiGateway, homeController, "REST/HTTP запросы", $tags="redLine")
+Rel(homeRepository, homeDb,     "SQL: хранение конфигураций", $tags="tealLine")
+
+' Асинхронные события через Kafka
+Rel(eventListener, kafka, "Подписка на топики (команды/сценарии)", $tags="greenLine")
+Rel(eventPublisher, kafka, "Публикация событий (статус устройств)", $tags="greenLine")
+
+' Устройства партнёров напрямую общаются, например,
+Rel(partnerDevices, heatingCore, "Получение команд/отправка статуса (опционально)", $tags="orangeLine")
+Rel(partnerDevices, lightingCore, "Получение команд/отправка статуса", $tags="orangeLine")
+Rel(partnerDevices, gateCore,     "Получение команд/отправка статуса", $tags="orangeLine")
+
+'
+' --- Легенда ---
+'
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+  FontColor #000000
+}
+legend
+|= Цвет |= Описание |
+|<#0000FF>|**Blue**: Внутренние REST-вызовы между компонентами (Controller → Core)|
+|<#FF0000>|**Red**: Внешние REST-вызовы (API Gateway → Home Management Service)|
+|<#008080>|**Teal**: Доступ к БД (JPA/DAO)|
+|<#00FF00>|**Green**: Асинхронные события через Kafka (Publish/Subscribe)|
+|<#FFA500>|**Orange**: Взаимодействие с устройствами (MQTT/HTTP)||<#E6FFE6>|**LightMintGreen** (`сlickable`): Зелёный контейнер. Кликабельный, ведёт на более детальную диаграмму кода|
+end legend
+@enduml

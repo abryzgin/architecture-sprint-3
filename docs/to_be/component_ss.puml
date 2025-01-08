@@ -1,0 +1,65 @@
+@startuml
+!include ../c4/C4_Component.puml
+
+' Делаем связи по умолчанию чёрными
+UpdateRelStyle(black, black)
+
+' Объявляем теги для цветных линий
+AddRelTag("blueLine",   $lineColor="#0000FF", $textColor="#0000FF")
+AddRelTag("redLine",    $lineColor="#FF0000", $textColor="#FF0000")
+AddRelTag("tealLine",   $lineColor="#008080", $textColor="#008080")
+AddRelTag("greenLine",  $lineColor="#00FF00", $textColor="#00FF00")
+AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
+
+title C4 Component Diagram – Scenario & Automation Service
+
+' -- Внешние объекты (за пределами scenarioService) --
+System_Ext(apiGateway, "API Gateway", "Маршрутизирует REST-запросы", "Аутентификация и авторизация")
+System_Ext(kafka, "Kafka Cluster", "Event Streaming", "Событийная шина (publish/subscribe)")
+ContainerDb(scenarioDb, "ScenarioDB", "PostgreSQL/NoSQL", "Хранение сценариев: (условия, действия)")
+
+'
+' --- Граница микросервиса Scenario & Automation Service ---
+'
+Container_Boundary(scenarioService, "Scenario & Automation Service", "Java/Spring Boot") {
+    Component(scenarioController, "ScenarioController", "Spring REST Controller", "Управление сценариями (создание, редактирование, удаление)")
+    Component(scenarioEngine, "ScenarioEngine", "Service / Bean", "Основная логика исполнения сценариев (If-Then). Подписка на события, выполнение действий")
+    Component(scenarioRepository, "ScenarioRepository", "JPA / DAO", "Хранение сценариев в DB (условия, триггеры, действия)")
+    Component(eventListener, "ScenarioEventListener", "Kafka Consumer", "Подписывается на телеметрию/события (Monitoring, Devices, Home)")
+    Component(eventPublisher, "ScenarioEventPublisher", "Kafka Producer", "Публикует команды (вкл/выкл устройство и др.)")
+}
+
+'
+' --- Связи внутри микросервиса ---
+'
+Rel(scenarioController, scenarioEngine,    "createScenario(), updateScenario(), deleteScenario()", $tags="blueLine")
+Rel(scenarioEngine,     scenarioRepository,"CRUD: сценарии (условия, действия)",                    $tags="tealLine")
+
+Rel(eventListener, scenarioEngine, "Получает события (Telemetry/Devices/Home), проверяет условия сценариев", $tags="greenLine")
+Rel(scenarioEngine, eventPublisher,"Публикует команды/уведомления (trigger actions)", $tags="greenLine")
+
+'
+' --- Связи с внешними системами ---
+'
+Rel(apiGateway, scenarioController, "REST/HTTP (управление сценариями)", $tags="redLine")
+Rel(scenarioRepository, scenarioDb, "SQL/NoSQL: хранение сценариев",     $tags="tealLine")
+
+Rel(eventListener,  kafka, "Подписка на события (telemetry, deviceStatus)", $tags="greenLine")
+Rel(eventPublisher, kafka, "Публикация команд (включить отопление и т.п.)", $tags="greenLine")
+
+'
+' --- Легенда ---
+'
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+  FontColor #000000
+}
+legend
+|= Цвет |= Описание |
+|<#0000FF>|**Blue**: Вызовы внутри Scenario Service (Controller → Engine)|
+|<#FF0000>|**Red**: Внешние REST-вызовы (API Gateway → ScenarioController)|
+|<#008080>|**Teal**: Доступ к базе (ScenarioDB)|
+|<#00FF00>|**Green**: Асинхронные события/команды через Kafka (publish/subscribe)|
+end legend
+@enduml

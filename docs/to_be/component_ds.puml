@@ -1,0 +1,82 @@
+@startuml
+!include ../C4/C4_Component.puml
+
+' Делаем связи по умолчанию чёрными
+UpdateRelStyle(black, black)
+
+' Объявляем теги, используемые для цветных линий
+AddRelTag("blueLine",   $lineColor="#0000FF", $textColor="#0000FF")
+AddRelTag("redLine",    $lineColor="#FF0000", $textColor="#FF0000")
+AddRelTag("tealLine",   $lineColor="#008080", $textColor="#008080")
+AddRelTag("greenLine",  $lineColor="#00FF00", $textColor="#00FF00")
+AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
+
+title C4 Component Diagram – Device Management Service
+
+' -- Внешние объекты (за пределами deviceService) --
+System_Ext(apiGateway, "API Gateway", "Обрабатывает внешние HTTP-запросы", "Маршрутизация и авторизация")
+System_Ext(kafka, "Kafka Cluster", "Event Streaming Platform", "Обмен сообщениями (publish/subscribe)")
+System_Ext(partnerDevices, "Устройства партнёров", "Датчики, реле, камеры и др.", "Подключаются по MQTT/HTTP/etc.")
+ContainerDb(deviceDb, "DeviceDB", "PostgreSQL", "Хранение сведений об устройствах: ID, статус, прошивки")
+
+'
+' --- Граница микросервиса Device Management Service ---
+'
+Container_Boundary(deviceService, "Device Management Service", "Java/Spring Boot") {
+    Component(deviceController, "DeviceController", "Spring REST Controller", "Обрабатывает запросы (регистрация устройств, обновление статуса, прошивок)")
+    Component(deviceRegistryCore, "DeviceRegistryCore", "Service / Bean", "Логика регистрации и учёта устройств, привязка к пользователю")
+    Component(firmwareCore, "FirmwareCore", "Service / Bean", "Управление прошивками устройств: обновление, хранение метаданных")
+    Component(deviceStatusCore, "DeviceStatusCore", "Service / Bean", "Обработка текущего статуса устройств (online/offline, обновление настроек)")
+    Component(deviceRepository, "DeviceRepository", "JPA / DAO", "Доступ к базе DeviceDB (CRUD, поиск)")
+    Component(eventListener, "DeviceEventListener", "Kafka Consumer", "Подписывается на события (например, запрос на массовое обновление прошивок)")
+    Component(eventPublisher, "DeviceEventPublisher", "Kafka Producer", "Публикует события (DeviceRegistered, FirmwareUpdated) в Kafka")
+}
+
+'
+' --- Связи между внутренними компонентами (внутри Boundary) ---
+'
+Rel(deviceController, deviceRegistryCore, "registerDevice(), updateDeviceInfo()", $tags="blueLine")
+Rel(deviceController, firmwareCore,       "updateFirmware()",                     $tags="blueLine")
+Rel(deviceController, deviceStatusCore,   "changeDeviceStatus()",                $tags="blueLine")
+
+Rel(deviceRegistryCore, deviceRepository, "CRUD: DeviceEntity",      $tags="tealLine")
+Rel(firmwareCore,       deviceRepository, "CRUD: FirmwareInfo",      $tags="tealLine")
+Rel(deviceStatusCore,   deviceRepository, "CRUD: Status updates",    $tags="tealLine")
+
+Rel(eventListener, deviceRegistryCore, "Получает события о массовых операциях над устройствами", $tags="greenLine")
+Rel(eventListener, firmwareCore,       "Получает команды на обновление прошивок",               $tags="greenLine")
+Rel(eventListener, deviceStatusCore,   "Получает события о статусе (если приходят из Kafka)",    $tags="greenLine")
+
+Rel(deviceRegistryCore, eventPublisher, "Публикует событие DeviceRegistered/DeviceUnregistered", $tags="greenLine")
+Rel(firmwareCore,       eventPublisher, "Публикует событие FirmwareUpdated",                     $tags="greenLine")
+Rel(deviceStatusCore,   eventPublisher, "Публикует событие DeviceStatusChanged",                 $tags="greenLine")
+
+'
+' --- Связи с внешними системами ---
+'
+Rel(apiGateway, deviceController, "REST/HTTP запросы", $tags="redLine")
+Rel(deviceRepository, deviceDb,   "SQL: хранение данных об устройствах", $tags="tealLine")
+
+Rel(eventListener, kafka,   "Подписка на топики (команды/события)", $tags="greenLine")
+Rel(eventPublisher, kafka,  "Публикация событий (Device events)",   $tags="greenLine")
+
+' Взаимодействие устройств с сервисом
+Rel(partnerDevices, deviceController, "HTTP/MQTT: регистрация, обновление статуса", $tags="orangeLine")
+
+'
+' --- Легенда ---
+'
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+  FontColor #000000
+}
+legend
+|= Цвет |= Описание |
+|<#0000FF>|**Blue**: Внутренние REST-вызовы между компонентами (Controller → Core)|
+|<#FF0000>|**Red**: Внешние HTTP-вызовы (API Gateway → Device Management Service)|
+|<#008080>|**Teal**: Доступ к БД (JPA/DAO)|
+|<#00FF00>|**Green**: Асинхронные события через Kafka (Publish/Subscribe)|
+|<#FFA500>|**Orange**: Взаимодействие с устройствами (MQTT/HTTP/...)|
+end legend
+@enduml
