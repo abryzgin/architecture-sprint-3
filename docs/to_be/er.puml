@@ -1,0 +1,243 @@
+@startuml
+
+' Настройки отображения:
+hide circle
+skinparam linetype ortho
+!theme cerulean
+
+' ------------------------
+' Ниже описаны сущности (Entity) и их поля.
+' ------------------------
+
+' Комментарий общего назначения:
+' - Для комментариев в PlantUML используется префикс ' (одна кавычка).
+' - Поля, помеченные <<PK>> означают первичный ключ (Primary Key).
+' - Поля, помеченные <<FK>> означают внешний ключ (Foreign Key).
+
+' Сущность "Пользователь" (User)
+Entity "User" as user {
+  ' Комментарий: Сущность User хранит данные пользователя системы (аккаунт).
+  * user_id : BIGINT <<PK>> 
+  --
+  ' email — уникальный идентификатор для входа
+  email : VARCHAR(255) <<UQ>>
+  ' password_hash — хэш пароля (может быть заменён на OAuth-токены)
+  password_hash : VARCHAR(255)
+  ' full_name — имя пользователя (ФИО или ник)
+  full_name : VARCHAR(255)
+  ' created_at / updated_at — временные метки для аудита
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Сущность "Дом" (House)
+Entity "House" as house {
+  ' Комментарий: House — это объект/место, которым владеет или управляет пользователь.
+  * house_id : BIGINT <<PK>>
+  --
+  ' owner_id — внешний ключ на user.user_id (кто владелец дома)
+  owner_id : BIGINT <<FK>>
+  ' address — адрес дома (может хранить улицу, город или GPS-координаты)
+  address : VARCHAR(255)
+  ' name — имя/название дома (например, "Загородный дом" или "Квартира")
+  name : VARCHAR(100)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Сущность "Тип устройства" (DeviceType)
+Entity "DeviceType" as devicetype {
+  ' Комментарий: DeviceType описывает тип устройства (например, Термостат, Камера, Реле и т.д.)
+  * type_id : BIGINT <<PK>>
+  --
+  ' type_name — понятное название типа (Thermostat, Camera и т.п.)
+  type_name : VARCHAR(50)
+  ' protocol — указание протокола связи (MQTT, HTTP и др.)
+  protocol : VARCHAR(50)
+  ' description — расширенное описание, поддерживаемые функции
+  description : TEXT
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Сущность "Прошивка" (Firmware)
+Entity "Firmware" as firmware {
+  ' Комментарий: Firmware хранит информацию о прошивках для конкретного типа устройства.
+  * firmware_id : BIGINT <<PK>>
+  --
+  ' type_id — внешний ключ на DeviceType (какому типу устройств подходит эта прошивка)
+  type_id : BIGINT <<FK>>
+  ' version — версия прошивки (например, "v1.2.3")
+  version : VARCHAR(20)
+  ' release_notes — заметки о релизе (что изменилось, какие баги исправлены)
+  release_notes : TEXT
+  ' file_url — ссылка на файл прошивки или путь в хранилище
+  file_url : VARCHAR(255)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Сущность "Устройство" (Device)
+Entity "Device" as device {
+  ' Комментарий: Device — конкретное физическое устройство в доме.
+  * device_id : BIGINT <<PK>>
+  --
+  ' house_id — внешний ключ на House (в каком доме установлено устройство)
+  house_id : BIGINT <<FK>>
+  ' type_id — внешний ключ на DeviceType (какой тип/класс устройства)
+  type_id : BIGINT <<FK>>
+  ' serial_number — уникальный серийный номер
+  serial_number : VARCHAR(100)
+  ' status — текущее состояние (ACTIVE, INACTIVE, ERROR, ...)
+  status : VARCHAR(50)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Сущность "Модуль" (Module)
+Entity "Module" as module {
+  ' Комментарий: Module — логический блок внутри устройства (например, HeatingModule, LightModule).
+  * module_id : BIGINT <<PK>>
+  --
+  ' device_id — внешний ключ на Device (какому физ. устройству принадлежит модуль)
+  device_id : BIGINT <<FK>>
+  ' module_name — название (например, "HeatingModule")
+  module_name : VARCHAR(100)
+  ' config — произвольная конфигурация (может быть JSON)
+  config : TEXT
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Сущность "Телеметрия" (TelemetryData)
+Entity "TelemetryData" as telemetry {
+  ' Комментарий: TelemetryData хранит показания сенсоров или события, сгенерированные устройством.
+  * telemetry_id : BIGINT <<PK>>
+  --
+  ' device_id — внешний ключ (какое устройство прислало телеметрию)
+  device_id : BIGINT <<FK>>
+  ' timestamp — время, когда телеметрия была зафиксирована (в устройстве)
+  timestamp : TIMESTAMP
+  ' key — название параметра (temperature, humidity, motion и т.д.)
+  key : VARCHAR(50)
+  ' value — значение параметра (строка, число, булево и т.д.)
+  value : VARCHAR(255)
+  ' created_at — когда запись попала в БД
+  created_at : TIMESTAMP
+}
+
+' Сущность "Сценарий" (Scenario)
+Entity "Scenario" as scenario {
+  ' Комментарий: Scenario описывает логику "Если ... то ...", созданную пользователем.
+  * scenario_id : BIGINT <<PK>>
+  --
+  ' user_id — внешний ключ на User (кто создал/владеет сценарием)
+  user_id : BIGINT <<FK>>
+  ' name — название сценария (например, "Включать свет при движении")
+  name : VARCHAR(100)
+  ' condition — условие (JSON или DSL, описывающее, при каких условиях срабатывает)
+  condition : TEXT
+  ' action — действие (JSON или набор команд)
+  action : TEXT
+  ' enabled — флаг активности
+  enabled : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Сущность "Подписка" (Subscription)
+Entity "Subscription" as subscription {
+  ' Комментарий: Subscription хранит подписку пользователя (SaaS-модель).
+  * subscription_id : BIGINT <<PK>>
+  --
+  ' user_id — внешний ключ на User (кто оформил подписку)
+  user_id : BIGINT <<FK>>
+  ' plan_name — название тарифного плана (Basic, Pro, Enterprise)
+  plan_name : VARCHAR(100)
+  ' status — текущее состояние (ACTIVE, EXPIRED, SUSPENDED)
+  status : VARCHAR(50)
+  ' start_date / end_date — период действия подписки
+  start_date : DATE
+  end_date : DATE
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Сущность "Алерт/Уведомление" (Alert)
+Entity "Alert" as alert {
+  ' Комментарий: Alert — системное/пользовательское уведомление об инциденте.
+  * alert_id : BIGINT <<PK>>
+  --
+  ' house_id — внешний ключ (в каком доме произошло событие)
+  house_id : BIGINT <<FK>>
+  ' user_id — (опционально) кому адресовано уведомление
+  user_id : BIGINT <<FK>>
+  ' type — тип уведомления (CRITICAL_TEMPERATURE, DEVICE_OFFLINE, ...)
+  type : VARCHAR(50)
+  ' message — текст сообщения
+  message : TEXT
+  ' severity — степень важности (LOW, MEDIUM, HIGH, CRITICAL)
+  severity : VARCHAR(20)
+  ' is_acknowledged — флаг, подтверждён ли алерт
+  is_acknowledged : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' Сущность "Заявка на обслуживание" (MaintenanceRequest)
+Entity "MaintenanceRequest" as maintreq {
+  ' Комментарий: MaintenanceRequest — заявка на выезд специалиста или обслуживание.
+  * request_id : BIGINT <<PK>>
+  --
+  ' house_id — внешний ключ, где требуется обслуживание
+  house_id : BIGINT <<FK>>
+  ' user_id — кто подал заявку
+  user_id : BIGINT <<FK>>
+  ' device_id — (необязательно) если заявка связана с конкретным устройством
+  device_id : BIGINT <<FK>>
+  ' description — описание проблемы
+  description : TEXT
+  ' status — статус заявки (NEW, IN_PROGRESS, RESOLVED, ...)
+  status : VARCHAR(50)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' ------------------------
+' Ниже задаём связи (Relationship)
+' ------------------------
+
+' Связь User (1) - House (N)
+user ||--o{ house : "1 пользователь (User) может иметь несколько домов (House)."
+
+' Связь House (1) - Device (N)
+house ||--o{ device : "1 дом (House) содержит несколько устройств (Device)."
+
+' Связь DeviceType (1) - Device (N)
+devicetype ||--o{ device : "1 тип устройства -> много устройств."
+
+' Связь DeviceType (1) - Firmware (N)
+devicetype ||--o{ firmware : "1 тип устройства -> много прошивок."
+
+' Связь Device (1) - Module (N)
+device ||--o{ module : "1 устройство -> несколько модулей."
+
+' Связь Device (1) - TelemetryData (N)
+device ||--o{ telemetry : "1 устройство -> много телеметрии."
+
+' Связь User (1) - Scenario (N)
+user ||--o{ scenario : "1 пользователь -> много сценариев."
+
+' Связь User (1) - Subscription (N)
+user ||--o{ subscription : "1 пользователь -> несколько подписок."
+
+' Связь House (1) - Alert (N)
+house ||--o{ alert : "1 дом -> множество алертов."
+
+' Связь House (1) - MaintenanceRequest (N)
+house ||--o{ maintreq : "1 дом -> несколько заявок на обслуживание."
+
+' Доп. связь Device (1) - MaintenanceRequest (N) (опционально)
+device ||--o{ maintreq : "1 устройство -> несколько заявок (если указано)."
+
+@enduml
