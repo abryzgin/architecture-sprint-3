@@ -14,9 +14,9 @@ AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
 title C4 Component Diagram – Device Management Service
 
 ' -- Внешние объекты (за пределами deviceService) --
-System_Ext(apiGateway, "API Gateway", "Обрабатывает внешние HTTP-запросы", "Маршрутизация и авторизация")
+System_Ext(apiGateway, "API Gateway", "Обрабатывает внешние HTTP-запросы", "Маршрутизация ")
 System_Ext(kafka, "Kafka Cluster", "Event Streaming Platform", "Обмен сообщениями (publish/subscribe)")
-System_Ext(partnerDevices, "Устройства партнёров", "Датчики, реле, камеры и др.", "Подключаются по MQTT/HTTP/etc.")
+System_Ext(partnerDevices, "Устройства партнёров", "Датчики, реле, камеры и др.", "Подключаются по MQTT/HTTP")
 ContainerDb(deviceDb, "DeviceDB", "PostgreSQL", "Хранение сведений об устройствах: ID, статус, прошивки")
 
 '

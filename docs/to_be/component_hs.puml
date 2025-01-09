@@ -15,7 +15,7 @@ AddElementTag("сlickable", $bgColor="#E6FFE6", $fontColor="#006600", $borderCol
 title C4 Component Diagram – Home Management Service
 
 ' -- Внешние системы / объекты, которые находятся за пределами микросервиса --
-System_Ext(apiGateway, "API Gateway", "Обрабатывает внешние запросы (REST/HTTP)", "Маршрутизация и авторизация")
+System_Ext(apiGateway, "API Gateway", "Обрабатывает внешние запросы (REST/HTTP)", "Маршрутизация ")
 System_Ext(partnerDevices, "Устройства партнёров", "Датчики/реле ворот/лампы/термостаты", "MQTT/HTTP и т.д.")
 System_Ext(kafka, "Kafka Cluster", "Event Streaming Platform", "Асинхронная передача сообщений")
 ContainerDb(homeDb, "HomeDB", "PostgreSQL", "Хранение настроек и статусов отопления, освещения, ворот и т.д.")

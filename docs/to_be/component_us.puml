@@ -14,7 +14,7 @@ AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
 title C4 Component Diagram – User & Access Management Service
 
 ' -- Внешние объекты (за пределами userService) --
-System_Ext(apiGateway, "API Gateway", "Обрабатывает внешние REST-запросы (REST/HTTP)", "Маршрутизация и авторизация")
+System_Ext(apiGateway, "API Gateway", "Обрабатывает внешние REST-запросы (REST/HTTP)", "Маршрутизация ")
 System_Ext(kafka, "Kafka Cluster", "Event Streaming Platform", "Обмен сообщениями (publish/subscribe)")
 ContainerDb(userDb, "UserDB", "PostgreSQL", "Хранение данных о пользователях, ролях, правах, токенах и т.д.")
 

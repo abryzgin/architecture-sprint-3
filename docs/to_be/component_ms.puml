@@ -14,7 +14,7 @@ AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
 title C4 Component Diagram – Monitoring & Telemetry Service
 
 ' -- Внешние объекты (за пределами monitoringService) --
-System_Ext(apiGateway, "API Gateway", "Принимает внешние REST-запросы", "Маршрутизация / авторизация")
+System_Ext(apiGateway, "API Gateway", "Принимает внешние REST-запросы", "Маршрутизация ")
 System_Ext(kafka, "Kafka Cluster", "Event Streaming Platform", "Обмен сообщениями (publish/subscribe)")
 System_Ext(partnerDevices, "Устройства (сенсоры, камеры...)", "Передают телеметрию", "MQTT/HTTP и т.д.")
 ContainerDb(monitoringDb, "MonitoringDB", "Time-Series DB / PostgreSQL", "Хранение телеметрии, логов событий")

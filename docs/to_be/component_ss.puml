@@ -14,7 +14,7 @@ AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
 title C4 Component Diagram – Scenario & Automation Service
 
 ' -- Внешние объекты (за пределами scenarioService) --
-System_Ext(apiGateway, "API Gateway", "Маршрутизирует REST-запросы", "Аутентификация и авторизация")
+System_Ext(apiGateway, "API Gateway", "Маршрутизирует REST-запросы", "Маршрутизация ")
 System_Ext(kafka, "Kafka Cluster", "Event Streaming", "Событийная шина (publish/subscribe)")
 ContainerDb(scenarioDb, "ScenarioDB", "PostgreSQL/NoSQL", "Хранение сценариев: (условия, действия)")
 
