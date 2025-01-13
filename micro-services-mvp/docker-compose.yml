@@ -1,0 +1,41 @@
+version: '3.8'
+services:
+  monitoring-service:
+    build:
+      context: ./MonitoringService
+    ports:
+      - "5009:5009"
+    networks:
+      - app-network
+
+  home-management-service:
+    build:
+      context: ./HomeManagementService
+    ports:
+      - "5010:5010"
+    networks:
+      - app-network
+
+  kafka:
+    image: bitnami/kafka:latest
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+    networks:
+      - app-network
+
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

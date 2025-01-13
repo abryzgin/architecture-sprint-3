@@ -1,0 +1,86 @@
+openapi: 3.0.0
+info:
+  title: Сервис Мониторинга и Телеметрии API
+  version: 1.0.0
+  description: |
+    В данном API используется RESTful подход для синхронного взаимодействия между клиентом и сервером. Это позволяет получить данные в реальном времени или по запросу с определёнными параметрами.
+paths:
+  /api/monitoring/{deviceId}/telemetry:
+    get:
+      summary: Получить текущую телеметрию устройства
+      description: |
+        RESTful API удобно использовать для получения текущих данных, так как клиент может сделать запрос и сразу получить ответ с актуальной информацией.
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор устройства
+      responses:
+        "200":
+          description: Успешное получение данных телеметрии
+          content:
+            application/json:
+              example:
+                {
+                  "deviceId": "12345",
+                  "temperature": 22.5,
+                  "humidity": 45.2,
+                  "status": "online",
+                  "timestamp": "2025-01-12T15:30:00Z"
+                }
+        "404":
+          description: Устройство не найдено
+        "500":
+          description: Ошибка сервера
+
+  /api/monitoring/{deviceId}/history:
+    post:
+      summary: Получить исторические данные телеметрии
+      description: |
+        RESTful API используется для предоставления исторических данных, так как клиент может указать временной диапазон и получить точный результат в ответ.
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date-time
+                  description: Дата и время начала периода
+                endDate:
+                  type: string
+                  format: date-time
+                  description: Дата и время окончания периода
+      responses:
+        "200":
+          description: Успешное получение исторических данных
+          content:
+            application/json:
+              example:
+                [
+                  {
+                    "timestamp": "2025-01-01T00:05:00Z",
+                    "temperature": 22.0,
+                    "humidity": 44.0
+                  },
+                  {
+                    "timestamp": "2025-01-01T00:10:00Z",
+                    "temperature": 22.1,
+                    "humidity": 44.5
+                  }
+                ]
+        "400":
+          description: Неверный запрос
+        "404":
+          description: Устройство не найдено

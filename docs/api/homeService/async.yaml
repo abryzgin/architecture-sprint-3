@@ -1,0 +1,37 @@
+asyncapi: 2.0.0
+info:
+  title: Асинхронный API Сервиса Управления Домом
+  version: 1.0.0
+  description: |
+    Асинхронный API используется для уведомлений о статусе устройств. Это позволяет клиентам получать обновления в режиме реального времени без необходимости отправлять постоянные запросы.
+channels:
+  home/status/updates:
+    subscribe:
+      summary: Подписка на обновления статусов устройств
+      description: |
+        Подписка через Kafka позволяет получать изменения статусов устройств (например, ворота открыты/закрыты) в режиме реального времени.
+      message:
+        contentType: application/json
+        payload:
+          type: object
+          properties:
+            deviceId:
+              type: string
+              description: Идентификатор устройства
+            type:
+              type: string
+              description: Тип устройства
+            status:
+              type: string
+              description: Текущий статус устройства
+            timestamp:
+              type: string
+              format: date-time
+              description: Временная метка события
+          example:
+            {
+              "deviceId": "gate123",
+              "type": "gate",
+              "status": "opened",
+              "timestamp": "2025-01-12T15:30:00Z"
+            }

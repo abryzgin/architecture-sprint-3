@@ -1,0 +1,89 @@
+openapi: 3.0.0
+info:
+  title: Сервис Управления Домом API
+  version: 1.0.0
+  description: |
+    В данном API используется RESTful подход для управления устройствами дома. Это позволяет синхронно управлять состоянием устройств, такими как освещение или отопление.
+paths:
+  /api/home/lights/{lightId}:
+    post:
+      summary: Управление освещением (включение/выключение)
+      description: |
+        RESTful API удобен для управления освещением, так как клиент может напрямую отправить команду с необходимыми параметрами (яркость, включение/выключение) и получить подтверждение.
+      parameters:
+        - name: lightId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор осветительного устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [on, off]
+                  description: Действие (включить/выключить)
+                brightness:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                  description: Яркость в процентах
+      responses:
+        "200":
+          description: Успешное выполнение действия
+          content:
+            application/json:
+              example:
+                {
+                  "lightId": "light123",
+                  "status": "on",
+                  "brightness": 80
+                }
+        "400":
+          description: Неверный запрос
+        "404":
+          description: Осветительное устройство не найдено
+
+  /api/home/heating/{zoneId}:
+    post:
+      summary: Установить температуру для зоны отопления
+      description: |
+        Использование RESTful API для управления отоплением позволяет клиенту отправить команду и получить подтверждение о её успешном выполнении.
+      parameters:
+        - name: zoneId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор зоны отопления
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                temperature:
+                  type: number
+                  format: float
+                  description: Желаемая температура в градусах Цельсия
+      responses:
+        "200":
+          description: Успешное выполнение действия
+          content:
+            application/json:
+              example:
+                {
+                  "zoneId": "zone1",
+                  "status": "heating",
+                  "setTemperature": 22
+                }
+        "400":
+          description: Неверный запрос
+        "404":
+          description: Зона отопления не найдена
