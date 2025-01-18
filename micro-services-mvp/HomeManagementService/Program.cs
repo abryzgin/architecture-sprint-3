@@ -2,9 +2,10 @@ using Confluent.Kafka;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using System;
-using System.Collections.Generic; // Для List<>
+using System.Collections.Generic;
 using System.Threading;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,10 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Home Management Service API", Version = "v1" });
 });
+
+// Добавляем логгирование
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole(); // Логгер, выводящий сообщения в консоль
 
 var app = builder.Build();
 
@@ -31,8 +36,10 @@ var consumerConfig = new ConsumerConfig
 };
 
 // Эндпоинт для управления освещением
-app.MapPost("/api/home/lights/{lightId}", (string lightId, HomeManagementService.Models.LightControlRequest request) =>
+app.MapPost("/api/home/lights/{lightId}", (string lightId, HomeManagementService.Models.LightControlRequest request, ILogger<Program> logger) =>
 {
+    logger.LogInformation($"Received light control request for LightId: {lightId}, Action: {request.Action}, Brightness: {request.Brightness}");
+
     var response = new
     {
         lightId,
@@ -43,8 +50,10 @@ app.MapPost("/api/home/lights/{lightId}", (string lightId, HomeManagementService
 }).WithName("ControlLights");
 
 // Эндпоинт для управления отоплением
-app.MapPost("/api/home/heating/{zoneId}", (string zoneId, HomeManagementService.Models.HeatingRequest request) =>
+app.MapPost("/api/home/heating/{zoneId}", (string zoneId, HomeManagementService.Models.HeatingRequest request, ILogger<Program> logger) =>
 {
+    logger.LogInformation($"Received heating control request for ZoneId: {zoneId}, Set Temperature: {request.Temperature}");
+
     var response = new
     {
         zoneId,
@@ -55,10 +64,10 @@ app.MapPost("/api/home/heating/{zoneId}", (string zoneId, HomeManagementService.
 }).WithName("SetHeatingTemperature");
 
 // Эндпоинт для подписки на события
-app.MapGet("/api/home/consumeUpdates", async (CancellationToken cancellationToken) =>
+app.MapGet("/api/home/consumeUpdates", async (ILogger<Program> logger, CancellationToken cancellationToken) =>
 {
     using var consumer = new ConsumerBuilder<Ignore, string>(consumerConfig)
-        .SetErrorHandler((_, e) => Console.WriteLine($"Kafka error: {e.Reason}"))
+        .SetErrorHandler((_, e) => logger.LogError($"Kafka error: {e.Reason}"))
         .Build();
 
     consumer.Subscribe("telemetry-topic");
@@ -68,7 +77,7 @@ app.MapGet("/api/home/consumeUpdates", async (CancellationToken cancellationToke
 
     try
     {
-        Console.WriteLine("Starting to consume messages...");
+        logger.LogInformation("Starting to consume messages...");
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -78,7 +87,7 @@ app.MapGet("/api/home/consumeUpdates", async (CancellationToken cancellationToke
                 if (consumeResult?.Message != null)
                 {
                     updates.Add(consumeResult.Message.Value);
-                    Console.WriteLine($"Consumed message: {consumeResult.Message.Value}");
+                    logger.LogInformation($"Consumed message: {consumeResult.Message.Value}");
                 }
 
                 if (updates.Count > 0) // Завершаем, если хотя бы одно сообщение получено
@@ -86,23 +95,24 @@ app.MapGet("/api/home/consumeUpdates", async (CancellationToken cancellationToke
             }
             catch (ConsumeException ex)
             {
-                Console.WriteLine($"Consume error: {ex.Error.Reason}");
+                logger.LogError($"Consume error: {ex.Error.Reason}");
                 break; // Прерываем цикл на случай ошибки
             }
         }
     }
     catch (OperationCanceledException)
     {
-        Console.WriteLine("Operation cancelled.");
+        logger.LogWarning("Operation cancelled.");
     }
     finally
     {
         consumer.Close(); // Закрываем потребитель
+        logger.LogInformation("Kafka consumer closed.");
     }
 
     if (updates.Count == 0)
     {
-        Console.WriteLine("No messages received within the timeout period.");
+        logger.LogWarning("No messages received within the timeout period.");
         return Results.Ok(new { message = "No messages received within the timeout period." });
     }
 

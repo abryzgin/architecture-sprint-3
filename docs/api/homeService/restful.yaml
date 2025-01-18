@@ -3,7 +3,8 @@ info:
   title: Сервис Управления Домом API
   version: 1.0.0
   description: |
-    В данном API используется RESTful подход для управления устройствами дома. Это позволяет синхронно управлять состоянием устройств, такими как освещение или отопление.
+    В данном API используется RESTful подход для управления устройствами дома и мониторинга. Это позволяет синхронно управлять состоянием устройств, такими как освещение или отопление, а также просматривать телеметрию и историю событий.
+
 paths:
   /api/home/lights/{lightId}:
     post:
@@ -87,3 +88,65 @@ paths:
           description: Неверный запрос
         "404":
           description: Зона отопления не найдена
+
+  /api/monitoring/devices/{deviceId}/telemetry:
+    get:
+      summary: Получить текущую телеметрию устройства
+      description: |
+        Возвращает актуальные данные телеметрии для заданного устройства.
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Уникальный идентификатор устройства
+      responses:
+        "200":
+          description: Успешное получение телеметрии
+          content:
+            application/json:
+              example:
+                {
+                  "deviceId": "device123",
+                  "temperature": 22.5,
+                  "humidity": 45
+                }
+        "404":
+          description: Устройство не найдено
+
+  /api/monitoring/devices/{deviceId}/history:
+    get:
+      summary: Получить историю событий устройства
+      description: |
+        Возвращает историю изменений состояния и данных телеметрии для указанного устройства.
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Уникальный идентификатор устройства
+      responses:
+        "200":
+          description: Успешное получение истории
+          content:
+            application/json:
+              example:
+                {
+                  "deviceId": "device123",
+                  "history": [
+                    {
+                      "timestamp": "2025-01-12T12:00:00Z",
+                      "event": "Temperature updated",
+                      "details": { "temperature": 23.0 }
+                    },
+                    {
+                      "timestamp": "2025-01-12T12:10:00Z",
+                      "event": "Humidity updated",
+                      "details": { "humidity": 40 }
+                    }
+                  ]
+                }
+        "404":
+          description: Устройство не найдено
