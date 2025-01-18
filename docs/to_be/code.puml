@@ -1,0 +1,55 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+
+title "UML Class Diagram – Heating (Home Service)"
+
+class HomeController {
+  - heatingCore: HeatingCore
+  - lightingCore: LightingCore
+  + turnOnHeating(id: Long): void
+  + turnOffHeating(id: Long): void
+  + setTargetTemperature(id: Long, temp: double): void
+  ...
+}
+
+class HeatingCore {
+  - homeRepository: HomeRepository
+  - eventPublisher: HomeEventPublisher
+  + turnOnHeating(id: Long): void
+  + turnOffHeating(id: Long): void
+  + setTargetTemperature(id: Long, temp: double): void
+  ...
+}
+
+class HomeRepository {
+  + findHeatingSystemById(id: Long): HeatingSystemEntity
+  + save(entity: HeatingSystemEntity): HeatingSystemEntity
+  ...
+}
+
+class HeatingSystemEntity {
+  - id: Long
+  - active: boolean
+  - targetTemperature: double
+  - lastUpdate: LocalDateTime
+  + getId(): Long
+  + isActive(): boolean
+  + setActive(boolean): void
+  + getTargetTemperature(): double
+  + setTargetTemperature(double): void
+  + getLastUpdate(): LocalDateTime
+  + setLastUpdate(LocalDateTime): void
+  ...
+}
+
+class HomeEventPublisher {
+  + publish(eventName: String, payload: Object): void
+  ...
+}
+
+HomeController --> HeatingCore : uses
+HeatingCore --> HomeRepository : CRUD ops
+HeatingCore --> HomeEventPublisher : publish events
+HomeRepository --> HeatingSystemEntity : returns/manages
+@enduml

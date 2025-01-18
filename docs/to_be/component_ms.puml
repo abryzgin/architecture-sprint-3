@@ -1,0 +1,74 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' Делаем связи по умолчанию чёрными
+UpdateRelStyle(black, black)
+
+' Объявляем теги для цветных линий
+AddRelTag("blueLine",   $lineColor="#0000FF", $textColor="#0000FF")
+AddRelTag("redLine",    $lineColor="#FF0000", $textColor="#FF0000")
+AddRelTag("tealLine",   $lineColor="#008080", $textColor="#008080")
+AddRelTag("greenLine",  $lineColor="#00FF00", $textColor="#00FF00")
+AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
+
+title C4 Component Diagram – Monitoring & Telemetry Service
+
+' -- Внешние объекты (за пределами monitoringService) --
+System_Ext(apiGateway, "API Gateway", "Принимает внешние REST-запросы", "Маршрутизация ")
+System_Ext(kafka, "Kafka Cluster", "Event Streaming Platform", "Обмен сообщениями (publish/subscribe)")
+System_Ext(partnerDevices, "Устройства (сенсоры, камеры...)", "Передают телеметрию", "MQTT/HTTP и т.д.")
+ContainerDb(monitoringDb, "MonitoringDB", "Time-Series DB / PostgreSQL", "Хранение телеметрии, логов событий")
+
+'
+' --- Граница микросервиса Monitoring & Telemetry Service ---
+'
+Container_Boundary(monitoringService, "Monitoring & Telemetry Service", "Java/Spring Boot") {
+    Component(monitoringController, "MonitoringController", "Spring REST Controller", "Обработка запросов на просмотр телеметрии, получение текущих показаний")
+    Component(telemetryIngestCore, "TelemetryIngestCore", "Service / Bean", "Основная логика приёма телеметрии (с устройств/партнёров)")
+    Component(analyticsCore, "AnalyticsCore", "Service / Bean", "Базовая аналитика, агрегирование, формирование статистики (если нужно)")
+    Component(monitoringRepository, "MonitoringRepository", "JPA / DAO", "Доступ к MonitoringDB (CRUD: записи телеметрии, логи)")
+    Component(eventListener, "MonitoringEventListener", "Kafka Consumer", "Подписывается на события (например, команды на опрос устройств)")
+    Component(eventPublisher, "MonitoringEventPublisher", "Kafka Producer", "Публикует события (новые показания телеметрии) в Kafka")
+}
+
+'
+' --- Связи внутри микросервиса (Boundary) ---
+'
+Rel(monitoringController, telemetryIngestCore, "getTelemetry(), ingestData()",           $tags="blueLine")
+Rel(monitoringController, analyticsCore,       "getAnalytics(), getStats()",             $tags="blueLine")
+Rel(telemetryIngestCore, monitoringRepository, "Сохранение телеметрии (CRUD)",           $tags="tealLine")
+Rel(analyticsCore,       monitoringRepository, "Чтение телеметрии для анализа",          $tags="tealLine")
+
+Rel(eventListener,       telemetryIngestCore,  "Получает команды на сбор/обработку данных", $tags="greenLine")
+Rel(telemetryIngestCore, eventPublisher,       "Публикует событие NewTelemetryData",       $tags="greenLine")
+Rel(analyticsCore,       eventPublisher,       "Публикует события (AnalyticsReady и др.)",  $tags="greenLine")
+
+'
+' --- Связи с внешними системами ---
+'
+Rel(apiGateway, monitoringController, "REST/HTTP (например, /monitoring)", $tags="redLine")
+Rel(monitoringRepository, monitoringDb, "Запись и чтение телеметрии",       $tags="tealLine")
+
+Rel(eventListener, kafka,   "Подписка на топики (команды)",  $tags="greenLine")
+Rel(eventPublisher, kafka,  "Публикация событий (telemetry)",$tags="greenLine")
+
+' Устройства партнёров напрямую отправляют телеметрию
+Rel(partnerDevices, telemetryIngestCore, "MQTT/HTTP: отправка телеметрии", $tags="orangeLine")
+
+'
+' --- Легенда ---
+'
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+  FontColor #000000
+}
+legend
+|= Цвет |= Описание |
+|<#0000FF>|**Blue**: Вызовы между компонентами внутри Monitoring Service (Controller → Core)|
+|<#FF0000>|**Red**: Внешние REST-запросы (API Gateway → MonitoringController)|
+|<#008080>|**Teal**: Доступ к БД (MonitoringDB)|
+|<#00FF00>|**Green**: Асинхронные события Kafka (Publish/Subscribe)|
+|<#FFA500>|**Orange**: Взаимодействие с внешними устройствами (MQTT/HTTP)|
+end legend
+@enduml

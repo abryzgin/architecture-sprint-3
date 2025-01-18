@@ -1,0 +1,76 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' Делаем связи по умолчанию чёрными
+UpdateRelStyle(black, black)
+
+' Объявляем теги, используемые для цветных линий
+AddRelTag("blueLine",   $lineColor="#0000FF", $textColor="#0000FF")
+AddRelTag("redLine",    $lineColor="#FF0000", $textColor="#FF0000")
+AddRelTag("tealLine",   $lineColor="#008080", $textColor="#008080")
+AddRelTag("greenLine",  $lineColor="#00FF00", $textColor="#00FF00")
+AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
+
+title C4 Component Diagram – User & Access Management Service
+
+' -- Внешние объекты (за пределами userService) --
+System_Ext(apiGateway, "API Gateway", "Обрабатывает внешние REST-запросы (REST/HTTP)", "Маршрутизация ")
+System_Ext(kafka, "Kafka Cluster", "Event Streaming Platform", "Обмен сообщениями (publish/subscribe)")
+ContainerDb(userDb, "UserDB", "PostgreSQL", "Хранение данных о пользователях, ролях, правах, токенах и т.д.")
+
+'
+' --- Граница микросервиса User & Access Management Service ---
+'
+Container_Boundary(userService, "User & Access Management Service", "Java/Spring Boot") {
+    Component(userController, "UserController", "Spring REST Controller", "Обрабатывает входящие запросы на регистрацию, аутентификацию, обновление профиля")
+    Component(authCore, "AuthCore", "Service / Bean", "Бизнес-логика аутентификации (проверка пароля, генерация JWT и т.п.)")
+    Component(registrationCore, "RegistrationCore", "Service / Bean", "Логика регистрации новых пользователей (валидация, создание учётных записей)")
+    Component(profileCore, "ProfileCore", "Service / Bean", "Управление пользовательским профилем (роли, права, личные данные)")
+    Component(userRepository, "UserRepository", "JPA / DAO", "Обеспечивает доступ к базе данных UserDB")
+    Component(eventListener, "UserEventListener", "Kafka Consumer", "Подписывается на события (если нужно реагировать на изменения извне)")
+    Component(eventPublisher, "UserEventPublisher", "Kafka Producer", "Публикует события (например, UserCreated, RoleChanged и т.д.) в Kafka")
+}
+
+'
+' --- Связи внутри микросервиса (в рамках Boundary) ---
+'
+Rel(userController, authCore,         "login(), refreshToken()",       $tags="blueLine")
+Rel(userController, registrationCore, "registerUser()",                $tags="blueLine")
+Rel(userController, profileCore,      "updateProfile(), changeRole()", $tags="blueLine")
+
+Rel(authCore,         userRepository, "CRUD: Пользователи, токены",     $tags="tealLine")
+Rel(registrationCore, userRepository, "CRUD: Создание новых учётных записей", $tags="tealLine")
+Rel(profileCore,      userRepository, "CRUD: Обновление профиля, ролей, прав", $tags="tealLine")
+
+Rel(eventListener,    authCore,         "Реагирует на внешние события (например, удаление аккаунта)", $tags="greenLine")
+Rel(eventListener,    profileCore,      "Реагирует на внешние события (например, изменение подписки)", $tags="greenLine")
+
+Rel(authCore,         eventPublisher,   "Публикует события (UserLoggedIn, UserLoggedOut)", $tags="greenLine")
+Rel(registrationCore, eventPublisher,   "Публикует событие (UserRegistered)",              $tags="greenLine")
+Rel(profileCore,      eventPublisher,   "Публикует событие (RoleChanged, ProfileUpdated)", $tags="greenLine")
+
+'
+' --- Связи с внешними системами ---
+'
+Rel(apiGateway, userController, "REST/HTTP запросы", $tags="redLine")
+Rel(userRepository, userDb,      "SQL: хранение данных пользователей", $tags="tealLine")
+
+Rel(eventListener, kafka,    "Подписка на топики (если нужно)",       $tags="greenLine")
+Rel(eventPublisher, kafka,   "Публикация событий (User events)",      $tags="greenLine")
+
+'
+' --- Легенда ---
+'
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+  FontColor #000000
+}
+legend
+|= Цвет |= Описание |
+|<#0000FF>|**Blue**: Внутренние REST-вызовы между компонентами (Controller → Core)|
+|<#FF0000>|**Red**: Внешние REST-вызовы (API Gateway → User & Access Service)|
+|<#008080>|**Teal**: Доступ к БД (JPA/DAO)|
+|<#00FF00>|**Green**: Асинхронные события через Kafka (Publish/Subscribe)|
+end legend
+@enduml

@@ -1,0 +1,161 @@
+@startuml
+
+' Настройки отображения:
+hide circle
+skinparam linetype ortho
+!theme cerulean
+
+' ------------------------
+' Сущности и их поля
+' ------------------------
+
+Entity "User" as user {
+  * user_id : BIGINT <<PK>> 
+  --
+  email : VARCHAR(255) <<UQ>> "Уникальный идентификатор для входа"
+  password_hash : VARCHAR(255) "Хэш пароля"
+  full_name : VARCHAR(255) "Имя пользователя (ФИО или ник)"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "House" as house {
+  * house_id : BIGINT <<PK>>
+  --
+  owner_id : BIGINT <<FK>> "Владелец дома (User)"
+  address : VARCHAR(255) "Адрес дома"
+  name : VARCHAR(100) "Название дома"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "UserHouse" as userhouse {
+  * user_house_id : BIGINT <<PK>>
+  --
+  user_id : BIGINT <<FK>> "Связь с User"
+  house_id : BIGINT <<FK>> "Связь с House"
+  role : VARCHAR(50) "Роль пользователя (Owner, Resident, Guest)"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "DeviceType" as devicetype {
+  * type_id : BIGINT <<PK>>
+  --
+  type_name : VARCHAR(50) "Название типа устройства"
+  protocol : VARCHAR(50) "Протокол связи"
+  description : TEXT "Описание"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "Firmware" as firmware {
+  * firmware_id : BIGINT <<PK>>
+  --
+  type_id : BIGINT <<FK>> "Связь с DeviceType"
+  version : VARCHAR(20) "Версия прошивки"
+  release_notes : TEXT "Заметки о релизе"
+  file_url : VARCHAR(255) "Ссылка на файл"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "Device" as device {
+  * device_id : BIGINT <<PK>>
+  --
+  house_id : BIGINT <<FK>> "Связь с House"
+  type_id : BIGINT <<FK>> "Связь с DeviceType"
+  serial_number : VARCHAR(100) "Серийный номер"
+  status : VARCHAR(50) "Состояние устройства"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "Module" as module {
+  * module_id : BIGINT <<PK>>
+  --
+  device_id : BIGINT <<FK>> "Связь с Device"
+  module_name : VARCHAR(100) "Название модуля"
+  config : TEXT "Конфигурация"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "TelemetryData" as telemetry {
+  * telemetry_id : BIGINT <<PK>>
+  --
+  device_id : BIGINT <<FK>> "Связь с Device"
+  timestamp : TIMESTAMP "Время фиксации телеметрии"
+  key : VARCHAR(50) "Название параметра"
+  value : VARCHAR(255) "Значение параметра"
+  created_at : TIMESTAMP
+}
+
+Entity "Scenario" as scenario {
+  * scenario_id : BIGINT <<PK>>
+  --
+  user_id : BIGINT <<FK>> "Связь с User"
+  name : VARCHAR(100) "Название сценария"
+  condition : TEXT "Условие"
+  action : TEXT "Действие"
+  enabled : BOOLEAN "Флаг активности"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "Subscription" as subscription {
+  * subscription_id : BIGINT <<PK>>
+  --
+  user_id : BIGINT <<FK>> "Связь с User"
+  plan_name : VARCHAR(100) "Название плана"
+  status : VARCHAR(50) "Состояние подписки"
+  start_date : DATE "Дата начала"
+  end_date : DATE "Дата окончания"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "Alert" as alert {
+  * alert_id : BIGINT <<PK>>
+  --
+  house_id : BIGINT <<FK>> "Связь с House"
+  user_id : BIGINT <<FK>> "Связь с User (опционально)"
+  type : VARCHAR(50) "Тип уведомления"
+  message : TEXT "Текст сообщения"
+  severity : VARCHAR(20) "Степень важности"
+  is_acknowledged : BOOLEAN "Флаг подтверждения"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+Entity "MaintenanceRequest" as maintreq {
+  * request_id : BIGINT <<PK>>
+  --
+  house_id : BIGINT <<FK>> "Связь с House"
+  user_id : BIGINT <<FK>> "Связь с User"
+  device_id : BIGINT <<FK>> "Связь с Device (опционально)"
+  description : TEXT "Описание проблемы"
+  status : VARCHAR(50) "Состояние заявки"
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+' ------------------------
+' Связи между сущностями
+' ------------------------
+
+user ||--o{ userhouse : "1 пользователь может быть связан с несколькими домами"
+house ||--o{ userhouse : "1 дом может быть связан с несколькими пользователями"
+user ||--o{ house : "1 пользователь может владеть несколькими домами (Owner)"
+house ||--o{ device : "1 дом содержит несколько устройств"
+devicetype ||--o{ device : "1 тип устройства -> несколько устройств"
+devicetype ||--o{ firmware : "1 тип устройства -> несколько прошивок"
+device ||--o{ module : "1 устройство -> несколько модулей"
+device ||--o{ telemetry : "1 устройство -> много телеметрии"
+user ||--o{ scenario : "1 пользователь -> много сценариев"
+user ||--o{ subscription : "1 пользователь -> несколько подписок"
+house ||--o{ alert : "1 дом -> множество уведомлений"
+house ||--o{ maintreq : "1 дом -> несколько заявок на обслуживание"
+device ||--o{ maintreq : "1 устройство -> несколько заявок (опционально)"
+
+@enduml

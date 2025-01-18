@@ -1,0 +1,43 @@
+asyncapi: 2.0.0
+info:
+  title: Асинхронный API Сервиса Мониторинга и Телеметрии
+  version: 1.0.0
+  description: |
+    Использование AsyncAPI оправдано для передачи событий и телеметрии в реальном времени. Это позволяет эффективно передавать данные от множества устройств и обрабатывать их без постоянных запросов от клиента.
+channels:
+  telemetry/new:
+    publish:
+      summary: Публикует новые данные телеметрии
+      description: |
+        Публикация данных через Kafka позволяет организовать асинхронное взаимодействие и быстро доставлять обновления телеметрии подписчикам.
+      message:
+        contentType: application/json
+        payload:
+          type: object
+          properties:
+            deviceId:
+              type: string
+              description: Идентификатор устройства
+            temperature:
+              type: number
+              format: float
+              description: Температура в градусах Цельсия
+            humidity:
+              type: number
+              format: float
+              description: Влажность в процентах
+            status:
+              type: string
+              description: Статус устройства
+            timestamp:
+              type: string
+              format: date-time
+              description: Временная метка события
+          example:
+            {
+              "deviceId": "12345",
+              "temperature": 22.5,
+              "humidity": 45.2,
+              "status": "online",
+              "timestamp": "2025-01-12T15:30:00Z"
+            }

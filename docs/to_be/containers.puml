@@ -1,0 +1,90 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' Определение стилей для связей
+UpdateRelStyle(black, black)
+AddRelTag("blueLine", $lineColor="#0000FF", $textColor="#0000FF")
+AddRelTag("redLine", $lineColor="#FF0000", $textColor="#FF0000")
+AddRelTag("tealLine", $lineColor="#008080", $textColor="#008080")
+AddRelTag("greenLine", $lineColor="#00FF00", $textColor="#00FF00")
+AddRelTag("orangeLine", $lineColor="#FFA500", $textColor="#FFA500")
+AddElementTag("сlickable", $bgColor="#E6FFE6", $fontColor="#006600", $borderColor="#00CC00")
+
+title C4 Container Diagram – Упрощённая Экосистема Умного Дома (с указанием паттернов)
+
+' --- Акторы и внешние системы ---
+Person(user, "Пользователь", "Использует веб/мобильное приложение для самообслуживания")
+System_Ext(partnerDevices, "Устройства партнёров", "Сенсоры, реле, камеры и т.д.", "Подключаются по стандартным протоколам (MQTT, HTTP...).")
+
+' --- Граница системы (SaaS) ---
+Boundary(Cloud, "Экосистема SmartHome (SaaS)") {
+
+    ' API Gateway
+    Container(apiGateway, "API Gateway", "Nginx / Kong / Apisix", "Централизованная точка входа, маршрутизация и авторизация.\nПаттерн: [API Gateway]") 
+
+    ' Шина сообщений (Kafka)
+    Container_Ext(kafka, "Kafka Cluster", "Event Streaming Platform", "Обмен сообщениями (publish/subscribe).\nПаттерн: Event-Driven Architecture, Pub/Sub\n[Event-Driven Architecture]")
+
+    ' -- Микросервисы --
+    Container(userService, "User & Access Management Service", "Java/Spring Boot", "Управление учётными записями и правами доступа.\nПаттерн: Database per Service, возможно JWT.", $tags="сlickable", $link="component_us.puml")
+    
+    Container(deviceService, "Device Management Service", "Java/Spring Boot", "Регистрация и управление устройствами.\nПаттерны: Database per Service, Event-Driven.", $tags="сlickable", $link="component_ds.puml")
+    
+    Container(homeService, "Home Management Service", "Java/Spring Boot", "Управление отоплением, освещением, воротами и др.\nПаттерны: Database per Service, Event-Driven.", $tags="сlickable", $link="component_hs.puml")
+    
+    Container(monitoringService, "Monitoring & Telemetry Service", "Java/Spring Boot", "Сбор телеметрии, аналитика, хранение исторических данных.\nПаттерны: Database per Service, Event-Driven.", $tags="сlickable", $link="component_ms.puml")
+    
+    Container(scenarioService, "Scenario & Automation Service", "Java/Spring Boot", "Сценарии автоматизации и реагирование на события.\nПаттерны: Event-Driven, возможно Choreography (сценарии).", $tags="сlickable", $link="component_ss.puml")
+
+    ' -- Базы данных (по сервису) --
+    ContainerDb(userDb, "UserDB", "PostgreSQL", "Хранит данные пользователей, пароли (хэш), роли, токены.\nПаттерн: Database per Service")
+
+    ContainerDb(deviceDb, "DeviceDB", "PostgreSQL", "Хранит сведения об устройствах (ID, прошивки, статус).\nПаттерн: Database per Service")
+
+    ContainerDb(homeDb, "HomeDB", "PostgreSQL", "Настройки/конфигурации для отопления, ворот, освещения и т.д.\nПаттерн: Database per Service")
+
+    ContainerDb(monitoringDb, "MonitoringDB", "Time-Series DB / PostgreSQL", "Хранит телеметрию (температура, состояние), возможно видеоданные.\nПаттерн: Database per Service")
+
+    ContainerDb(scenarioDb, "ScenarioDB", "PostgreSQL/NoSQL", "Хранит пользовательские сценарии (If-This-Then-That).\nПаттерн: Database per Service")
+
+    ' --- Связи с использованием тегов ---
+    Rel(user, apiGateway, "HTTP/HTTPS", $tags="blueLine")
+
+    Rel(apiGateway, userService,       "REST/JSON", $tags="redLine")
+    Rel(apiGateway, deviceService,     "REST/JSON", $tags="redLine")
+    Rel(apiGateway, homeService,       "REST/JSON", $tags="redLine")
+    Rel(apiGateway, monitoringService, "REST/JSON", $tags="redLine")
+    Rel(apiGateway, scenarioService,   "REST/JSON", $tags="redLine")
+
+    Rel(userService, userDb,         "CRUD",             $tags="tealLine")
+    Rel(deviceService, deviceDb,     "CRUD",             $tags="tealLine")
+    Rel(homeService,   homeDb,       "CRUD",             $tags="tealLine")
+    Rel(monitoringService, monitoringDb, "CRUD/read/write", $tags="tealLine")
+    Rel(scenarioService, scenarioDb, "CRUD",             $tags="tealLine")
+
+    Rel(deviceService,   kafka, "Publish/Subscribe events",                 $tags="greenLine")
+    Rel(homeService,     kafka, "Publish/Subscribe commands/status",        $tags="greenLine")
+    Rel(monitoringService,kafka, "Publish telemetries,\nsubscribe commands", $tags="greenLine")
+    Rel(scenarioService,  kafka, "Subscribe events/telemetry,\npublish automation commands", $tags="greenLine")
+
+    Rel(partnerDevices, deviceService,    "MQTT/HTTP",                          $tags="orangeLine")
+    Rel(partnerDevices, homeService,      "Получение команд,\nотправка статуса", $tags="orangeLine")
+    Rel(partnerDevices, monitoringService,"Отправка телеметрии",                $tags="orangeLine")
+}
+
+skinparam legend {
+  BackgroundColor #FFFFFF
+  BorderColor #000000
+  FontColor #000000
+}
+
+legend
+|= Цвет |= Значение |
+|<#0000FF>|**Blue** (`blueLine`): Внешний HTTP от Пользователя к API Gateway|
+|<#FF0000>|**Red** (`redLine`): REST/JSON вызовы между API Gateway и микросервисами|
+|<#008080>|**Teal** (`tealLine`): Доступ к базам данных|
+|<#00FF00>|**Green** (`greenLine`): Асинхронные сообщения через Kafka|
+|<#FFA500>|**Orange** (`orangeLine`): Взаимодействие с устройствами партнёров (MQTT/HTTP)|
+|<#E6FFE6>|**LightMintGreen** (`сlickable`): Зелёный контейнер. Кликабельный, ведёт на более детальную диаграмму компонента|
+end legend
+@enduml
